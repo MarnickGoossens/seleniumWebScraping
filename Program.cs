@@ -1,7 +1,12 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using System.Text.Json;
+using System.IO;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System;
+using System.Text;
+using System.Diagnostics;
 class Program
 {
     static void Main()
@@ -40,21 +45,44 @@ class Program
             Thread.Sleep(2000);
 
             IReadOnlyCollection<IWebElement> productElements = driver.FindElements(By.CssSelector("#contents > ytd-video-renderer"));
+            List<video> videos = new List<video> {};
             foreach (IWebElement productElement in productElements.Take(5))
             {
+                // Het blok tekst splitsen in een array van strings op basis van nieuwe regeltekens
+                string[] regels = productElement.Text.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+                // Een lijst maken en de regels toevoegen
+                List<string> regelLijst = new List<string>(regels);
+
+                // Inhoud van de lijst afdrukken
+                Console.WriteLine("Inhoud van de lijst:");
+                foreach (string regel in regelLijst)
+                {
+                    Console.WriteLine(regel);
+                }
                 string title = productElement.FindElement(By.Id("video-title")).Text;
-                string uploaded = productElement.FindElement(By.CssSelector("#metadata-line > span:nth-child(4)")).Text;
-                items.Add(new string[] { title, uploaded });
+                string link = productElement.FindElement(By.Id("video-title")).GetAttribute("href");
+                string uploaded = productElement.FindElement(By.CssSelector("#metadata-line > span:nth-child(4)")).Text; 
+                
+                items.Add(new string[] { title, uploaded, link });
+                videos.Add(new video { videoTitle = title, videoUploaded = uploaded, videoLink = link });
                 string csvFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\YouTube.csv";
                 using (StreamWriter writer = new StreamWriter(csvFilePath))
                 {
-                    writer.WriteLine("Title,Uploaded");
+                    writer.WriteLine("Title,uploader,uploaded,link");
                     foreach (string[] item in items)
-                    {
+                    {   
                         writer.WriteLine(string.Join(",", item));
                     }
                 }
             }
+
+            // Serialize de lijst naar een JSON-string
+            string jsonString = JsonSerializer.Serialize(videos);
+
+            // Schrijf de JSON-string naar een bestand
+            string jsonFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\youtube.json";
+            File.WriteAllText(jsonFilePath, jsonString, Encoding.UTF8);
 
             // Sluit de browser.
             driver.Quit();
@@ -74,22 +102,32 @@ class Program
             Thread.Sleep(20000);
 
             IReadOnlyCollection<IWebElement> productElements = driver.FindElements(By.ClassName("job-info"));
-            Console.WriteLine(productElements.Count);
+            List<vacature> vacatures = new List<vacature> { };
             foreach (IWebElement productElement in productElements.Take(5))
             {
                 string title = productElement.FindElement(By.ClassName("job-title")).Text;
                 string company = productElement.FindElement(By.ClassName("job-company")).Text;
-                items.Add(new string[] { title, company });
-                string csvFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\items.csv";
+                string location = productElement.FindElement(By.ClassName("job-location")).Text;
+                string keywords = productElement.FindElement(By.CssSelector("span:nth-child(4)")).Text.Replace(",", ";");
+                string link = productElement.FindElement(By.ClassName("job-title")).GetAttribute("href");
+                vacatures.Add(new vacature { jobTitle = title, jobCompany = company, jobLocation = location, jobKeywords = keywords, jobLink = link, });
+                items.Add(new string[] { title, company, location, keywords, link });
+                string csvFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\vacatures.csv";
                 using (StreamWriter writer = new StreamWriter(csvFilePath))
                 {
-                    writer.WriteLine("Title,Company");
+                    writer.WriteLine("Title,Company,location,keywords,link");
                     foreach (string[] item in items)
                     {
                         writer.WriteLine(string.Join(",", item));
                     }
                 }
             }
+            // Serialize de lijst naar een JSON-string
+            string jsonString = JsonSerializer.Serialize(vacatures);
+
+            // Schrijf de JSON-string naar een bestand
+            string jsonFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\vacatures.json";
+            File.WriteAllText(jsonFilePath, jsonString, Encoding.UTF8);
 
             driver.Quit();
         }
@@ -111,11 +149,12 @@ class Program
             Thread.Sleep(2000);
 
             IReadOnlyCollection<IWebElement> productElements = driver.FindElements(By.ClassName("product-item--row"));
-
+            List<product> producten = new List<product> { };
             foreach (IWebElement productElement in productElements.Take(3))
             {
                 string title = productElement.FindElement(By.ClassName("product-title--inline")).Text;
                 string price = productElement.FindElement(By.ClassName("promo-price")).Text.Replace("\r", ".").Replace("\n", "");
+                producten.Add(new product { productTitle = title, productPrice = price });
                 items.Add(new string[] { title, price });
                 string csvFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\bol.csv";
                 using (StreamWriter writer = new StreamWriter(csvFilePath))
@@ -128,7 +167,39 @@ class Program
                 }
             }
 
+            // Serialize de lijst naar een JSON-string
+            string jsonString = JsonSerializer.Serialize(producten);
+
+            // Schrijf de JSON-string naar een bestand
+            string jsonFilePath = "C:\\Users\\marni\\source\\repos\\webscraping\\producten.json";
+            File.WriteAllText(jsonFilePath, jsonString, Encoding.UTF8);
+
             driver.Quit();
         }
     }
+}
+
+// Define a simple class for demonstration
+// Define een eenvoudige klasse voor demonstratie
+
+public class video
+{
+    public string videoTitle { get; set; }
+    public string videoUploaded { get; set; }
+    public string videoLink { get; set; }
+}
+
+public class vacature
+{
+    public string jobTitle { get; set; }
+    public string jobCompany { get; set; }
+    public string jobLocation { get; set; }
+    public string jobKeywords { get; set; }
+    public string jobLink { get; set; }
+}
+
+public class product
+{
+    public string productTitle { get; set; }
+    public string productPrice { get; set; }
 }
